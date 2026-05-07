@@ -1,0 +1,60 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Add these to your EXISTING docker-compose.yml on the VPS
+# ─────────────────────────────────────────────────────────────────────────────
+
+# 1. Add this to the `environment` block of your root .env file:
+#
+#    POSTGRES_DB_SIGNEASE=signease_db
+#    SIGNEASE_JWT_SECRET=replace-with-a-long-random-secret
+#    SIGNEASE_ALLOWED_ORIGINS=https://yourdomain.com
+
+# 2. Add this service block inside your `services:` section:
+
+  signease-backend:
+    build: ./signease_backend
+    container_name: signease-backend
+    restart: always
+    expose:
+      - '4000'
+    environment:
+      NODE_ENV: ${NODE_ENV}
+      # ── Database (same postgres container as other services) ──────
+      DB_HOST: db
+      DB_PORT: ${POSTGRES_PORT}
+      DB_NAME: ${POSTGRES_DB_SIGNEASE}
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      # ── App ───────────────────────────────────────────────────────
+      JWT_SECRET: ${SIGNEASE_JWT_SECRET}
+      PORT: 4000
+      ALLOWED_ORIGINS: ${SIGNEASE_ALLOWED_ORIGINS}
+    depends_on:
+      - db
+
+  signease-web:
+    build: ./signease_web
+    container_name: signease-web
+    restart: always
+    expose:
+      - '3001'
+    environment:
+      NODE_ENV: ${NODE_ENV}
+      NEXT_PUBLIC_API_URL: ${SIGNEASE_API_URL}
+    depends_on:
+      - signease-backend
+
+# 3. If you use Nginx, add these location blocks to your nginx.conf:
+#
+#    # SignEase API
+#    location /signease/api/ {
+#        proxy_pass http://signease-backend:4000/api/;
+#        proxy_set_header Host $host;
+#        proxy_set_header X-Real-IP $remote_addr;
+#    }
+#
+#    # SignEase Web
+#    location /signease/ {
+#        proxy_pass http://signease-web:3001/;
+#        proxy_set_header Host $host;
+#        proxy_set_header X-Real-IP $remote_addr;
+#    }
