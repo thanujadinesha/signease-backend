@@ -2,29 +2,28 @@
 # Add these to your EXISTING docker-compose.yml on the VPS
 # ─────────────────────────────────────────────────────────────────────────────
 
-# 1. Add this to the `environment` block of your root .env file:
+# 1. Add these to your root .env file:
 #
 #    POSTGRES_DB_SIGNEASE=signease_db
 #    SIGNEASE_JWT_SECRET=replace-with-a-long-random-secret
-#    SIGNEASE_ALLOWED_ORIGINS=https://yourdomain.com
+#    SIGNEASE_ALLOWED_ORIGINS=https://signease.veloxio.cloud
+#    SIGNEASE_API_URL=https://apisignease.veloxio.cloud
 
-# 2. Add this service block inside your `services:` section:
+# 2. Add these service blocks inside your `services:` section:
 
   signease-backend:
     build: ./signease_backend
-    container_name: signease-backend
+    container_name: signease-backendx
     restart: always
     expose:
       - '3004'
     environment:
       NODE_ENV: ${NODE_ENV}
-      # ── Database (same postgres container as other services) ──────
-      DB_HOST: db
+      DB_HOST: postgres16
       DB_PORT: ${POSTGRES_PORT}
       DB_NAME: ${POSTGRES_DB_SIGNEASE}
       DB_USER: ${POSTGRES_USER}
       DB_PASSWORD: ${POSTGRES_PASSWORD}
-      # ── App ───────────────────────────────────────────────────────
       JWT_SECRET: ${SIGNEASE_JWT_SECRET}
       PORT: 3004
       ALLOWED_ORIGINS: ${SIGNEASE_ALLOWED_ORIGINS}
@@ -32,29 +31,61 @@
       - db
 
   signease-web:
-    build: ./signease_web
-    container_name: signease-web
+    build:
+      context: ./signease_web
+      args:
+        # Baked into the Next.js client bundle at build time
+        NEXT_PUBLIC_API_URL: ${SIGNEASE_API_URL}
+    container_name: signease-webx
     restart: always
     expose:
       - '3003'
     environment:
       NODE_ENV: ${NODE_ENV}
-      NEXT_PUBLIC_API_URL: ${SIGNEASE_API_URL}
+      PORT: 3003
     depends_on:
       - signease-backend
 
-# 3. If you use Nginx, add these location blocks to your nginx.conf:
+# 3. Nginx config — fix the typo (sigmease → signease) in /root/nginx/default.conf:
 #
-#    # SignEase API
-#    location /signease/api/ {
-#        proxy_pass http://signease-backend:4000/api/;
-#        proxy_set_header Host $host;
-#        proxy_set_header X-Real-IP $remote_addr;
+#    server {
+#        listen 443 ssl;
+#        listen [::]:443 ssl;
+#        server_name signease.veloxio.cloud www.signease.veloxio.cloud;   ← fix typo here
+#        client_max_body_size 10M;
+#
+#        ssl_certificate /etc/letsencrypt/live/signease.veloxio.cloud/fullchain.pem;
+#        ssl_certificate_key /etc/letsencrypt/live/signease.veloxio.cloud/privkey.pem;
+#
+#        ssl_protocols TLSv1.2 TLSv1.3;
+#        ssl_prefer_server_ciphers on;
+#
+#        location /api/ {
+#            proxy_pass         http://signease-backendx:3004/api/;
+#            proxy_http_version 1.1;
+#            proxy_set_header   Host              $host;
+#            proxy_set_header   X-Real-IP         $remote_addr;
+#            proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
+#            proxy_set_header   X-Forwarded-Proto $scheme;
+#        }
+#
+#        location / {
+#            proxy_pass         http://signease-webx:3003;
+#            proxy_http_version 1.1;
+#            proxy_set_header   Upgrade    $http_upgrade;
+#            proxy_set_header   Connection "upgrade";
+#            proxy_set_header   Host       $host;
+#            proxy_cache_bypass $http_upgrade;
+#        }
 #    }
 #
-#    # SignEase Web
-#    location /signease/ {
-#        proxy_pass http://signease-web:3001/;
-#        proxy_set_header Host $host;
-#        proxy_set_header X-Real-IP $remote_addr;
+#    server {
+#        listen 443 ssl;
+#        listen [::]:443 ssl;
+#        server_name apisignease.veloxio.cloud www.apisignease.veloxio.cloud;
+#        ...
+#        location / {
+#            proxy_pass http://signease-backendx:3004;
+#            ...
+#        }
 #    }
