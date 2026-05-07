@@ -32,5 +32,5 @@ app.use((err, _req, res, _next) => {
   res.status(500).json({ error: err.message || 'Internal server error' });
 });
 
-const PORT = process.env.PORT || 4000;
+const PORT = process.env.PORT || 3004;
 app.listen(PORT, () => console.log(`SignEase API → http://localhost:${PORT}`));
