@@ -10,11 +10,15 @@ app.use(cors({
   credentials: true,
 }));
 
+// Stripe webhook needs raw body — mount BEFORE express.json
+app.use('/api/billing/webhook', express.raw({ type: 'application/json' }));
+
 app.use(express.json({ limit: '10mb' }));
 
 app.use('/api/auth',       require('./routes/auth'));
 app.use('/api/profile',    require('./routes/profile'));
 app.use('/api/signatures', require('./routes/signatures'));
+app.use('/api/billing',    require('./routes/billing'));
 
 app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
 

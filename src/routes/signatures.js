@@ -4,7 +4,7 @@ const db          = require('../db');
 
 const router = express.Router();
 
-const TIER_LIMITS = { free: 3, pro: 50, unlimited: -1 };
+const TIER_LIMITS = { free: 3, pro: 50, premium: -1, unlimited: -1 };
 
 // GET /api/signatures/can-sign
 router.get('/can-sign', requireAuth, async (req, res) => {
