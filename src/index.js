@@ -19,6 +19,7 @@ app.use('/api/auth',       require('./routes/auth'));
 app.use('/api/profile',    require('./routes/profile'));
 app.use('/api/signatures', require('./routes/signatures'));
 app.use('/api/billing',    require('./routes/billing'));
+app.use('/api/admin',      require('./routes/admin'));
 
 app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
 
