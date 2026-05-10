@@ -200,7 +200,8 @@ router.post('/sign/:token', async (req, res) => {
 
     const slotResult = await client.query(
       `SELECT s.id, s.slot, s.label, s.email, s.signed_at,
-              r.id AS request_id, r.owner_id, r.document_name, r.current_slot, r.total_slots
+              r.id AS request_id, r.owner_id, r.document_name, r.current_slot, r.total_slots,
+              r.placements
        FROM signing_slots s
        JOIN signing_requests r ON r.id = s.request_id
        WHERE s.token = $1
@@ -236,8 +237,10 @@ router.post('/sign/:token', async (req, res) => {
       const u = userRow.rows[0];
       if (u) {
         const limit = TIER_LIMITS[u.tier] ?? 3;
+        const placements = parsePlacements(row.placements);
+        const sigCount = Math.max(1, placements.length);
         if (limit < 0 || u.signatures_used < limit) {
-          await client.query('UPDATE users SET signatures_used = signatures_used + 1 WHERE id = $1', [row.owner_id]);
+          await client.query('UPDATE users SET signatures_used = signatures_used + $1 WHERE id = $2', [sigCount, row.owner_id]);
           await client.query('INSERT INTO signed_documents (user_id, document_name) VALUES ($1,$2)', [row.owner_id, row.document_name]);
         }
       }
