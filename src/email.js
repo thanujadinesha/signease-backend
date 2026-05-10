@@ -4,15 +4,15 @@ let transporter = null;
 
 function getTransporter() {
   if (transporter) return transporter;
-  if (!process.env.SMTP_HOST) return null;
+  const user = process.env.EMAIL_USER;
+  const pass = process.env.EMAIL_APP_PASSWORD;
+  if (!user || !pass) {
+    console.warn('[Email] EMAIL_USER / EMAIL_APP_PASSWORD not set — emails will be logged only');
+    return null;
+  }
   transporter = nodemailer.createTransport({
-    host:   process.env.SMTP_HOST,
-    port:   parseInt(process.env.SMTP_PORT || '587'),
-    secure: process.env.SMTP_SECURE === 'true',
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
+    service: 'gmail',
+    auth: { user, pass },
   });
   return transporter;
 }
@@ -66,7 +66,7 @@ async function sendSigningEmail({ to, documentName, signingUrl, message, slotLab
 </html>`;
 
   await t.sendMail({
-    from:    `"SignEase" <${process.env.FROM_EMAIL || process.env.SMTP_USER}>`,
+    from:    `"SignEase" <${process.env.FROM_EMAIL || process.env.EMAIL_USER}>`,
     to,
     subject: `Action required: Please sign "${documentName}"`,
     html,
@@ -104,7 +104,7 @@ async function sendCompletionEmail({ to, documentName }) {
 </html>`;
 
   await t.sendMail({
-    from:    `"SignEase" <${process.env.FROM_EMAIL || process.env.SMTP_USER}>`,
+    from:    `"SignEase" <${process.env.FROM_EMAIL || process.env.EMAIL_USER}>`,
     to,
     subject: `All signatures complete: "${documentName}"`,
     html,
