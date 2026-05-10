@@ -31,4 +31,4 @@ app.use((err, _req, res, _next) => {
 });
 
 const PORT = process.env.PORT || 3004;
-app.listen(PORT, () => console.log(`SignEase API → http://localhost:${PORT}`));
+app.listen(PORT, () => console.log(`iSigner API → http://localhost:${PORT}`));

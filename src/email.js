@@ -47,7 +47,7 @@ async function sendSigningEmail({ to, documentName, signingUrl, message, slotLab
 </style></head>
 <body>
 <div class="card">
-  <div class="logo">SignEase</div>
+  <div class="logo">iSigner</div>
   <h1>You have a document to sign</h1>
   <p>Someone has requested your signature on the following document. ${stepText}</p>
   <div class="doc">
@@ -59,14 +59,14 @@ async function sendSigningEmail({ to, documentName, signingUrl, message, slotLab
   <p>Or copy this link into your browser:</p>
   <p class="url">${signingUrl}</p>
   <div class="footer">
-    <p>This link is unique to you (${to}). Do not share it.<br>Powered by SignEase.</p>
+    <p>This link is unique to you (${to}). Do not share it.<br>Powered by iSigner.</p>
   </div>
 </div>
 </body>
 </html>`;
 
   await t.sendMail({
-    from:    `"SignEase" <${process.env.FROM_EMAIL || process.env.EMAIL_USER}>`,
+    from:    `"iSigner" <${process.env.FROM_EMAIL || process.env.EMAIL_USER}>`,
     to,
     subject: `Action required: Please sign "${documentName}"`,
     html,
@@ -94,17 +94,17 @@ async function sendCompletionEmail({ to, documentName }) {
 </style></head>
 <body>
 <div class="card">
-  <div class="logo">SignEase</div>
+  <div class="logo">iSigner</div>
   <div class="badge">All signatures complete</div>
   <h1>Your document is fully signed</h1>
-  <p><strong style="color:#F0EEFF">${documentName}</strong> has been signed by all parties. Log in to your SignEase account to download the final signed document.</p>
-  <div class="footer"><p>Powered by SignEase.</p></div>
+  <p><strong style="color:#F0EEFF">${documentName}</strong> has been signed by all parties. Log in to your iSigner account to download the final signed document.</p>
+  <div class="footer"><p>Powered by iSigner.</p></div>
 </div>
 </body>
 </html>`;
 
   await t.sendMail({
-    from:    `"SignEase" <${process.env.FROM_EMAIL || process.env.EMAIL_USER}>`,
+    from:    `"iSigner" <${process.env.FROM_EMAIL || process.env.EMAIL_USER}>`,
     to,
     subject: `All signatures complete: "${documentName}"`,
     html,

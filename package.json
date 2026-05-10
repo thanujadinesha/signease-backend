@@ -1,7 +1,7 @@
 {
-  "name": "signease-backend",
+  "name": "isigner-backend",
   "version": "1.0.0",
-  "description": "SignEase REST API — Node.js + PostgreSQL",
+  "description": "iSigner REST API — Node.js + PostgreSQL",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
