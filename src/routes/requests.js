@@ -29,23 +29,29 @@ router.post('/', requireAuth, async (req, res) => {
       return res.status(403).json({ error: 'Pro or Premium plan required' });
     }
 
-    const { documentName, documentData, documentType = 'pdf', message, placements = [], signers = [] } = req.body;
+    const { documentName, documentData, documentType = 'pdf', message, placements = [], signers = [],
+            expiresInDays, reminderInterval } = req.body;
     if (!documentName || !documentData) return res.status(400).json({ error: 'documentName and documentData are required' });
     if (!signers.length) return res.status(400).json({ error: 'At least one signer is required' });
 
     const sorted = [...signers].sort((a, b) => a.slot - b.slot);
+
+    const expiresAt = expiresInDays > 0
+      ? new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000)
+      : null;
+    const remInterval = reminderInterval > 0 ? reminderInterval : null;
 
     await client.query('BEGIN');
 
     const result = await client.query(
       `INSERT INTO signing_requests
          (owner_id, document_name, document_data, document_type, message, placements, token,
-          signers, current_slot, total_slots)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+          signers, current_slot, total_slots, expires_at, reminder_interval)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
        RETURNING id`,
       [req.user.id, documentName, documentData, documentType, message || null,
        JSON.stringify(placements), crypto.randomBytes(32).toString('hex'),
-       JSON.stringify(sorted), 1, sorted.length]
+       JSON.stringify(sorted), 1, sorted.length, expiresAt, remInterval]
     );
     const requestId = result.rows[0].id;
 
@@ -94,6 +100,7 @@ router.get('/', requireAuth, async (req, res) => {
   try {
     const result = await db.query(
       `SELECT r.id, r.document_name, r.status, r.current_slot, r.total_slots, r.created_at,
+              r.expires_at, r.reminder_interval,
               COALESCE(json_agg(
                 json_build_object('slot', s.slot, 'label', s.label, 'email', s.email, 'signed_at', s.signed_at)
                 ORDER BY s.slot
@@ -114,6 +121,8 @@ router.get('/', requireAuth, async (req, res) => {
         currentSlot: r.current_slot,
         totalSlots: r.total_slots,
         createdAt: r.created_at,
+        expiresAt: r.expires_at,
+        reminderInterval: r.reminder_interval,
         slots: r.slots,
       })),
     });
@@ -140,8 +149,9 @@ router.get('/sign/:token', async (req, res) => {
     if (!slotResult.rows[0]) return res.status(404).json({ error: 'Signing link not found' });
     const row = slotResult.rows[0];
 
-    if (row.signed_at)            return res.status(410).json({ error: 'Already signed' });
+    if (row.signed_at)              return res.status(410).json({ error: 'Already signed' });
     if (row.status === 'completed') return res.status(410).json({ error: 'Document fully signed' });
+    if (row.status === 'expired')   return res.status(410).json({ error: 'request_expired' });
     if (row.slot !== row.current_slot) {
       return res.status(403).json({
         error: 'not_your_turn',
@@ -299,7 +309,7 @@ router.get('/:id', requireAuth, async (req, res) => {
   try {
     const result = await db.query(
       `SELECT r.id, r.document_name, r.document_data, r.document_type, r.placements,
-              r.status, r.current_slot, r.total_slots, r.created_at,
+              r.status, r.current_slot, r.total_slots, r.created_at, r.expires_at, r.reminder_interval,
               COALESCE(json_agg(
                 json_build_object(
                   'slot', s.slot, 'label', s.label, 'email', s.email,
@@ -315,16 +325,18 @@ router.get('/:id', requireAuth, async (req, res) => {
     if (!result.rows[0]) return res.status(404).json({ error: 'Not found' });
     const r = result.rows[0];
     res.json({
-      id:           r.id,
-      documentName: r.document_name,
-      documentData: r.document_data,
-      documentType: r.document_type,
-      placements:   parsePlacements(r.placements),
-      status:       r.status,
-      currentSlot:  r.current_slot,
-      totalSlots:   r.total_slots,
-      createdAt:    r.created_at,
-      slots:        r.slots,
+      id:               r.id,
+      documentName:     r.document_name,
+      documentData:     r.document_data,
+      documentType:     r.document_type,
+      placements:       parsePlacements(r.placements),
+      status:           r.status,
+      currentSlot:      r.current_slot,
+      totalSlots:       r.total_slots,
+      createdAt:        r.created_at,
+      expiresAt:        r.expires_at,
+      reminderInterval: r.reminder_interval,
+      slots:            r.slots,
     });
   } catch (e) {
     console.error(e);

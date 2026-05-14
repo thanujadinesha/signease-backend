@@ -111,4 +111,96 @@ async function sendCompletionEmail({ to, documentName }) {
   });
 }
 
-module.exports = { sendSigningEmail, sendCompletionEmail };
+async function sendReminderEmail({ to, documentName, signingUrl, slotLabel, totalSlots, slotIndex }) {
+  const t = getTransporter();
+  if (!t) {
+    console.log(`[Email] SMTP not configured — reminder to ${to}:\n  ${signingUrl}`);
+    return;
+  }
+
+  const stepText = totalSlots > 1
+    ? `You are signer ${slotIndex} of ${totalSlots}.`
+    : '';
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0E0E14; margin: 0; padding: 32px 16px; }
+  .card { background: #16161F; border: 1px solid #2a2a3d; border-radius: 16px; max-width: 520px; margin: 0 auto; padding: 32px; }
+  .logo { font-size: 18px; font-weight: 800; color: #A78BFA; margin-bottom: 24px; }
+  .badge { display: inline-block; background: #F59E0B20; border: 1px solid #F59E0B40; color: #F59E0B; border-radius: 100px; padding: 4px 12px; font-size: 12px; font-weight: 700; margin-bottom: 16px; }
+  h1 { color: #F0EEFF; font-size: 20px; margin: 0 0 8px; }
+  p { color: #9D9DB5; font-size: 14px; line-height: 1.6; margin: 0 0 16px; }
+  .doc { background: #1C1C28; border: 1px solid #2a2a3d; border-radius: 12px; padding: 14px 16px; margin: 20px 0; }
+  .doc-name { color: #F0EEFF; font-weight: 600; font-size: 14px; }
+  .btn { display: inline-block; background: #F59E0B; color: #fff; text-decoration: none; padding: 14px 28px; border-radius: 12px; font-weight: 700; font-size: 15px; margin: 8px 0 20px; }
+  .footer { color: #4a4a6a; font-size: 12px; margin-top: 24px; border-top: 1px solid #2a2a3d; padding-top: 16px; }
+  .url { color: #8B5CF6; word-break: break-all; font-size: 12px; }
+</style></head>
+<body>
+<div class="card">
+  <div class="logo">iSigner</div>
+  <div class="badge">Reminder</div>
+  <h1>Your signature is still needed</h1>
+  <p>This is a friendly reminder that your signature is awaited on the following document. ${stepText}</p>
+  <div class="doc">
+    <span class="doc-name">📄 ${documentName}</span>
+  </div>
+  <a href="${signingUrl}" class="btn">Sign document →</a>
+  <p>Or copy this link into your browser:</p>
+  <p class="url">${signingUrl}</p>
+  <div class="footer">
+    <p>This link is unique to you (${to}). Do not share it.<br>Powered by iSigner.</p>
+  </div>
+</div>
+</body>
+</html>`;
+
+  await t.sendMail({
+    from:    `"iSigner" <${process.env.FROM_EMAIL || process.env.EMAIL_USER}>`,
+    to,
+    subject: `Reminder: Please sign "${documentName}"`,
+    html,
+  });
+}
+
+async function sendExpiredEmail({ to, documentName }) {
+  const t = getTransporter();
+  if (!t) {
+    console.log(`[Email] SMTP not configured — expired notice to ${to}`);
+    return;
+  }
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0E0E14; margin: 0; padding: 32px 16px; }
+  .card { background: #16161F; border: 1px solid #2a2a3d; border-radius: 16px; max-width: 520px; margin: 0 auto; padding: 32px; }
+  .logo { font-size: 18px; font-weight: 800; color: #A78BFA; margin-bottom: 24px; }
+  .badge { display: inline-block; background: #F8717120; border: 1px solid #F8717140; color: #F87171; border-radius: 100px; padding: 4px 12px; font-size: 12px; font-weight: 700; margin-bottom: 16px; }
+  h1 { color: #F0EEFF; font-size: 20px; margin: 0 0 8px; }
+  p { color: #9D9DB5; font-size: 14px; line-height: 1.6; margin: 0 0 16px; }
+  .footer { color: #4a4a6a; font-size: 12px; margin-top: 24px; border-top: 1px solid #2a2a3d; padding-top: 16px; }
+</style></head>
+<body>
+<div class="card">
+  <div class="logo">iSigner</div>
+  <div class="badge">Expired</div>
+  <h1>Signing request has expired</h1>
+  <p>Your signing request for <strong style="color:#F0EEFF">${documentName}</strong> has expired without being fully signed. You can create a new request from your iSigner dashboard.</p>
+  <div class="footer"><p>Powered by iSigner.</p></div>
+</div>
+</body>
+</html>`;
+
+  await t.sendMail({
+    from:    `"iSigner" <${process.env.FROM_EMAIL || process.env.EMAIL_USER}>`,
+    to,
+    subject: `Signing request expired: "${documentName}"`,
+    html,
+  });
+}
+
+module.exports = { sendSigningEmail, sendCompletionEmail, sendReminderEmail, sendExpiredEmail };

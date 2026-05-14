@@ -24,6 +24,9 @@ app.use('/api/requests',   require('./routes/requests'));
 
 app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
 
+// Background jobs
+require('./jobs/reminders');
+
 // Generic error handler
 app.use((err, _req, res, _next) => {
   console.error(err);
